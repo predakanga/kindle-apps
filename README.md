@@ -30,10 +30,10 @@ assets of their own repositories' GitHub releases.
   newest first.
 - [`.github/workflows/publish.yml`](.github/workflows/publish.yml) runs it
   and publishes `repo.json` and a page listing the packages on GitHub
-  Pages. It runs when an app's release workflow sends a `release`
-  dispatch, when `main` changes, or by hand (*Actions > Publish the index >
-  Run workflow*). There's no schedule, because GitHub turns off scheduled
-  workflows in quiet repositories.
+  Pages. It runs when an app's release workflow starts it, when `main`
+  changes, or by hand (*Actions > Publish the index > Run workflow*).
+  There's no schedule, because GitHub turns off scheduled workflows in
+  quiet repositories.
 
 The design is recorded in Kindle Series Enabler's
 [ADR 0005](https://github.com/predakanga/kindle-series-enabler/blob/main/docs/decisions/0005-one-index-for-all-packages.md).
@@ -45,9 +45,11 @@ The design is recorded in Kindle Series Enabler's
 2. Add the repository to `packages.txt`.
 3. Give the app repository a `KINDLE_APPS_TOKEN` secret: a fine-grained
    personal access token with access to `predakanga/kindle-apps` only,
-   and the **Contents: Read and write** permission (which the dispatch
-   API needs). Renew it when it expires.
-4. End its release workflow with the dispatch:
+   and the **Actions: Read and write** permission, which is what starting
+   a workflow needs. It can't change this repository's files, so the
+   index is only ever built from what's committed here. Renew it when it
+   expires.
+4. End its release workflow by starting the publish workflow:
 
    ```yaml
    - name: Update the kindle-apps index
@@ -58,8 +60,8 @@ The design is recorded in Kindle Series Enabler's
          echo "::warning::KINDLE_APPS_TOKEN isn't set: run kindle-apps' Publish the index workflow by hand"
          exit 0
        fi
-       gh api repos/predakanga/kindle-apps/dispatches -f event_type=release \
-         -f "client_payload[repo]=$GITHUB_REPOSITORY" -f "client_payload[tag]=$GITHUB_REF_NAME"
+       gh workflow run publish.yml -R predakanga/kindle-apps \
+         -f repo="$GITHUB_REPOSITORY" -f tag="$GITHUB_REF_NAME"
    ```
 
 To build the index locally (needs `gh`, `curl`, `jq` and `tar`):
