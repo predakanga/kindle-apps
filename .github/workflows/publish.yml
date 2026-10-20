@@ -1,0 +1,55 @@
+# Rebuilds the KPM index and its page on GitHub Pages from the releases of
+# every repository in packages.txt. Runs when an app's release workflow
+# sends a `release` dispatch, when main changes (for example a new line in
+# packages.txt), or by hand. No schedule: GitHub turns off scheduled
+# workflows in quiet repositories.
+name: Publish the index
+
+on:
+  repository_dispatch:
+    types: [release]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show what asked for this run
+        if: github.event_name == 'repository_dispatch'
+        run: echo "Release ${{ github.event.client_payload.tag }} of ${{ github.event.client_payload.repo }}"
+
+      - uses: actions/configure-pages@v6
+        id: pages
+
+      - name: Build the index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tools/build-index.sh packages.txt pages/index.html \
+            "${{ steps.pages.outputs.base_url }}/repo.json" site
+          cat site/repo.json
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - uses: actions/deploy-pages@v5
+        id: deploy

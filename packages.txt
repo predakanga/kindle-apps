@@ -1,0 +1,4 @@
+# One GitHub repository (owner/name) per line. Each published vX.Y.Z
+# release with a .kpkg attached becomes an artifact in the index.
+predakanga/kindle-series-enabler
+predakanga/kindle-wireless-sync
